@@ -112,6 +112,7 @@ def calculate_var_for_multiple_stocks(stock_dict: Dict[str, pd.DataFrame], confi
                     'ticker': ticker,
                     'confidence_level': f"{confidence*100:.2f}%",
                     'var_percentage': var_result['var_percentage'],
+                    'day1_var': var_result['daily_vars'][0],
                     'volatility': var_result['cumulative_volatility']
                 })
     return pd.DataFrame(results)

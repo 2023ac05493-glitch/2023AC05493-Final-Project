@@ -187,7 +187,7 @@ def display_single_stock_analysis():
 
     st.subheader(f"VaR analysis for {ticker.replace('.NS', '')}")
     st.dataframe(data.tail(10))
-
+    st.markdown("---")
     returns = data['returns'].dropna()
     model = GARCHVaRModel(returns)
     if model.fit():
@@ -196,11 +196,21 @@ def display_single_stock_analysis():
         
         st.subheader("VaR Predictions")
         col1, col2 = st.columns(2)
+
         with col1:
-            display_var_card(f"7 day VAR - {ticker}", var_result_95['var_percentage'], "95% Confidence", color="#3498db")
+            display_var_card(f"Next day VAR - {ticker}", var_result_95['daily_vars'][0], "95% Confidence", color="#3498db")
         with col2:
-            display_var_card(f"7 day VaR - {ticker}", var_result_99['var_percentage'], "99% Confidence", color="#e74c3c")
+            display_var_card(f"Next day VaR - {ticker}", var_result_99['daily_vars'][0], "99% Confidence", color="#e74c3c")
         
+        st.markdown("---")
+        st.markdown("### 7-Day Cumulative VaR Predictions")
+        col3,col4 = st.columns(2)
+
+        with col3:
+            display_var_card(f"7 day VAR - {ticker}", var_result_95['var_percentage'], "95% Confidence", color="#3498db")
+        with col4:
+            display_var_card(f"7 day VaR - {ticker}", var_result_99['var_percentage'], "99% Confidence", color="#e74c3c")
+        st.markdown("---")
         st.subheader("VaR Progression Over 7 Days")
 
         daily_var_df = pd.DataFrame({
@@ -217,6 +227,7 @@ def display_single_stock_analysis():
         fig_daily.update_layout(xaxis_title="Day", yaxis_title="VaR (%)", title=f"VaR Progression for {ticker.replace('.NS', '')}", template='plotly_white', height=400)
         
         st.plotly_chart(fig_daily, use_container_width=True)
+        st.markdown("---")
         st.subheader("True vs Predicted VaR Backtest")
         with st.spinner("Running backtest..."):
             backtest_95 = rolling_var_backtest(returns, confidence_level=0.95)
@@ -235,6 +246,8 @@ def display_single_stock_analysis():
                     st.metric("Breach Rate", f"{breach_rate_95:.2f}%")
         st.session_state['var_context'] = f"""
         Current VaR Analysis for {ticker}:
+        - Next-day VaR (95%): {var_result_95['daily_vars'][0]}
+        - Next-day VaR (99%): {var_result_99['daily_vars'][0]}
         - 7-Day VaR (95%): {var_result_95['var_percentage']}
         - 7-Day VaR (99%): {var_result_99['var_percentage']}
         - Volatility : {var_result_95['cumulative_volatility']}
@@ -269,6 +282,17 @@ def display_multiple_stocks_analysis():
         var_95_data = var_results[var_results['confidence_level'] == '95.00%']
         var_99_data = var_results[var_results['confidence_level'] == '99.00%']
 
+        #Next-day VaR cards
+        st.markdown("### Next-day VaR Predictions")
+        col1, col2 = st.columns(2)
+        with col1:
+            avg_next_day_var_95 = var_95_data['day1_var'].mean()
+            display_var_card("Avg Next-day VaR at 95%", avg_next_day_var_95, confidence="95%", color="#3498db")
+        with col2:
+            avg_next_day_var_99 = var_99_data['day1_var'].mean()
+            display_var_card("Avg Next-day VaR at 99%", avg_next_day_var_99, confidence="99%", color="#e74c3c")
+        st.markdown("---")
+        st.markdown("### 7-Day Cumulative VaR Predictions")
         col1,col2,col3,col4 = st.columns(4)
         with col1:
             avg_var_95 = var_95_data['var_percentage'].mean()
@@ -282,11 +306,11 @@ def display_multiple_stocks_analysis():
         with col4:
             min_var_95 = var_95_data['var_percentage'].max()
             display_var_card("Min VaR at 95%", min_var_95, confidence="95%", color="#27ae60")
-        
+        st.markdown("---")
         st.subheader("Individual Stock VaR Comparison")
         fig_stocks = plot_individual_stock_var(var_results)
         st.plotly_chart(fig_stocks, use_container_width=True)
-
+        st.markdown("---")
         st.subheader("VaR by Sector")
 
         col1, col2 = st.columns(2)
@@ -297,7 +321,7 @@ def display_multiple_stocks_analysis():
         with col2:
             fig_sector_99 = plot_sector_var_breakdown(var_results, confidence_level='99.00%')
             st.plotly_chart(fig_sector_99, use_container_width=True)
-        
+        st.markdown("---")
         with st.expander("Detailed VaR Results"):
             display_df = var_results.copy()
             display_df['sector'] = display_df['ticker'].apply(get_stock_sector)
@@ -306,6 +330,8 @@ def display_multiple_stocks_analysis():
             st.dataframe(display_df, use_container_width=True)
         st.session_state['var_context'] = f"""
         Portfolio VaR Analysis for {len(var_results)} stocks:
+        - Average next-day VaR at 95%: {var_95_data['day1_var'].mean():.2f}%
+        - Average next-day VaR at 99%: {var_99_data['day1_var'].mean():.2f}%
         - Average 7-Day VaR (95%): {var_95_data['var_percentage'].mean():.2f}%
         - Average 7-Day VaR (99%): {var_99_data['var_percentage'].mean():.2f}%
         - Minimum risk stock at 95%: {var_95_data.loc[var_95_data['var_percentage'].idxmax(), 'ticker']}
